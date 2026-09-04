@@ -1,3 +1,6 @@
+# EXAMPLE / PLANNED: the Tier-1 declarative engine is not built yet. This
+# documents the intended manifest format for a future shared runner. Greenhouse
+# currently ships as a Tier-2 code scraper (tier2/greenhouse).
 # Tier-1 declarative scraper manifest — interpreted by Headhunter-Core's engine.
 # No code: adding an ATS like this is just committing a file.
 ats: greenhouse

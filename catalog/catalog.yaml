@@ -1,45 +1,24 @@
-# The scraper catalog — git IS the registry.
+# Headhunter scraper library — the set of ATS scrapers.
 #
-# Headhunter-Core reads this to know which ATS scrapers exist. Adding or updating
-# an ATS is a commit here (plus, for Tier-2, an image push to ghcr). Existence
-# lives in git; each scraper announces its capabilities to Core at spin-up.
+# NOTE: this file documents the available scrapers. The OPERATIVE catalog that
+# Core's operator actually runs is the RevNet ConfigMap
+# (apps/headhunter/scan-catalog.yaml) — it carries image tags + per-scraper
+# company lists and is curated there.
+#
+# Every current scraper is Tier-2: a container image run as a one-shot Kubernetes
+# Job by Core's operator. Tier-1 (declarative manifests interpreted by a shared
+# runner) is a planned addition — see tier1/greenhouse.yaml for the target format.
 scrapers:
   - ats: greenhouse
-    tier: 1                     # declarative — interpreted by Core's engine
-    manifest: tier1/greenhouse.yaml
-    contractVersion: "1.0.0"
-
-  - ats: example
-    tier: 2                     # code image — one-shot Job
-    image: ghcr.io/revreb/headhunter-scraper-example
-    contractVersion: "1.0.0"
-
-  - ats: greenhouse
-    tier: 2                     # code image — one-shot Job, POSTs to Core ingest
     image: ghcr.io/revreb/headhunter-scraper-greenhouse
-    contractVersion: "1.0.0"
-
   - ats: lever
-    tier: 2
     image: ghcr.io/revreb/headhunter-scraper-lever
-    contractVersion: "1.0.0"
-
   - ats: ashby
-    tier: 2
     image: ghcr.io/revreb/headhunter-scraper-ashby
-    contractVersion: "1.0.0"
-
   - ats: workday
-    tier: 2
     image: ghcr.io/revreb/headhunter-scraper-workday
-    contractVersion: "1.0.0"
-
-  - ats: amazon
-    tier: 2                     # custom-company scraper (not a standard ATS)
+  - ats: amazon            # custom-company (amazon.jobs), not a standard ATS
     image: ghcr.io/revreb/headhunter-scraper-amazon
-    contractVersion: "1.0.0"
-
-  - ats: apple
-    tier: 2                     # custom-company scraper (not a standard ATS)
+  - ats: apple             # custom-company; DEFERRED — jobs.apple.com is CSRF/bot-gated (HTTP 436)
     image: ghcr.io/revreb/headhunter-scraper-apple
-    contractVersion: "1.0.0"
+    status: deferred

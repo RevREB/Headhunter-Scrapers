@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        scraper: [example, greenhouse, lever, ashby, workday, amazon, apple]     # add a Tier-2 scraper dir name here to publish it
+        scraper: [greenhouse, lever, ashby, workday, amazon, apple]     # add a Tier-2 scraper dir name here to publish it
     steps:
       - uses: actions/checkout@v4
       - uses: docker/login-action@v3

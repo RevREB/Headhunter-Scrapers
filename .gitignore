@@ -1,3 +1,4 @@
+# go
 /bin/
 /out/
 *.test
@@ -5,5 +6,13 @@
 .env
 .env.*
 
-# stray build binaries
+# stray `go build ./tier2/<x>` / `go run` binaries land at repo root named after
+# the package dir — never commit them
+/amazon
+/apple
+/ashby
+/example
+/greenhouse
+/lever
 /scraper
+/workday
