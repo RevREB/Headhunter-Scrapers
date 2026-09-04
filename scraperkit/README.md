@@ -120,6 +120,19 @@ and `cfg.IngestURL` are provided if a module wants to inspect them directly.
 Helpers exported for module use: `Client` (a shared 30s `*http.Client`), `Env`,
 `GetJSON`, and `MatchAny`.
 
+Each Go module is its own module (`modules/<ats>/go.mod`) and pulls `scraperkit`
+in with a local replace:
+
+```
+require github.com/RevREB/Headhunter-Scrapers/scraperkit v0.0.0
+replace github.com/RevREB/Headhunter-Scrapers/scraperkit => ../../scraperkit
+```
+
+There is no repo-root Go module — the repo is not "a Go project." Every module
+directory is self-contained and carries its own build files (a `go.mod` for Go, a
+`pyproject.toml`/`Cargo.toml`/etc. for anything else), which is what keeps the
+modules genuinely language-independent.
+
 ---
 
 ## Writing a module in another language
@@ -150,17 +163,3 @@ Package it in a `Dockerfile`, add it to the build matrix in
 a Go module. Core never knows or cares what language produced the JSON.
 
 ---
-
-## Why there is a `go.mod` at the repo root
-
-There is **one** `go.mod` at the root, making the whole repo a single Go module
-(`github.com/RevREB/Headhunter-Scrapers`). That is what lets every Go module
-`import ".../scraperkit"` and share one dependency set, one `go build ./...`, and
-one `go test ./...`. It is the standard "one module, many `main` packages"
-Go-monorepo layout — not a per-directory module sprawl.
-
-It does **not** make the repo Go-only. The Go toolchain only looks at directories
-that contain `.go` files, so a module written in another language is just a
-sibling directory under `modules/` with its own `Dockerfile`; `go build ./...`
-ignores it entirely. Go is the *default* here (every current module is Go and
-uses `scraperkit`), but the contract — not the `go.mod` — is what defines a module.

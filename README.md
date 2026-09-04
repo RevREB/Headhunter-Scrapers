@@ -55,10 +55,14 @@ library. Core never scrapes itself.
 
 ## Adding a module
 
-Add `modules/<ats>/` (a `main.go` with a `fetch` func + `Dockerfile` + a
-`_test.go` for any pure helpers), add `<ats>` to the `build.yml` matrix, and add
-it to the RevNet scan catalog with its company list. `go test ./...` runs the
-unit tests.
+Add `modules/<ats>/` — for a Go module that's a `go.mod` (pull in `scraperkit`
+via a local `replace`, see [`scraperkit/README.md`](scraperkit/README.md)), a
+`main.go` with a `fetch` func, a `Dockerfile`, and a `_test.go` for any pure
+helpers. A module in another language just needs its own build files + a
+`Dockerfile` that honors the contract. Then add `<ats>` to the `build.yml` matrix
+and to the RevNet scan catalog with its company list. Each module is its own
+module, so run tests inside its directory (`cd modules/<ats> && go test ./...`);
+CI does this for every module dir.
 
 ## License
 

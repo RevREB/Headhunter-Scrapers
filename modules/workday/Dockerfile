@@ -1,8 +1,10 @@
 # syntax=docker/dockerfile:1
+# Build context is the repo root so the module's local `replace => ../../scraperkit` resolves.
 FROM golang:1.25-bookworm AS build
 WORKDIR /src
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/scraper ./modules/workday
+WORKDIR /src/modules/workday
+RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/scraper .
 FROM gcr.io/distroless/static:nonroot
 COPY --from=build /out/scraper /scraper
 USER 65532:65532

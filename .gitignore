@@ -16,3 +16,11 @@
 /lever
 /scraper
 /workday
+
+# per-module compiled binaries (go build . inside a module dir)
+modules/*/greenhouse
+modules/*/lever
+modules/*/ashby
+modules/*/workday
+modules/*/amazon
+modules/*/apple

@@ -14,7 +14,12 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.25'
-      - run: go test ./...
+      # No root Go module: each module (and scraperkit) is its own module, so test each in place.
+      - run: |
+          set -e
+          for d in scraperkit modules/*/; do
+            if [ -f "$d/go.mod" ]; then echo "== test $d =="; (cd "$d" && go test ./...); fi
+          done
   images:
     needs: test
     runs-on: ubuntu-latest
