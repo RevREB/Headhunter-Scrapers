@@ -2,8 +2,10 @@
 // contract-shaped RawPostings to Headhunter-Core's ingest endpoint.
 //
 // Greenhouse exposes a clean public JSON API per company board:
-//   https://boards-api.greenhouse.io/v1/boards/{token}          -> {name}
-//   https://boards-api.greenhouse.io/v1/boards/{token}/jobs      -> {jobs:[...]}
+//
+//	https://boards-api.greenhouse.io/v1/boards/{token}          -> {name}
+//	https://boards-api.greenhouse.io/v1/boards/{token}/jobs      -> {jobs:[...]}
+//
 // No auth, no tokens spent — discovery is free.
 package main
 
