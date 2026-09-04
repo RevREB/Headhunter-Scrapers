@@ -30,24 +30,34 @@ func fetch(cfg scraperkit.Config, emit func(scraperkit.RawPosting) bool) error {
 		if company == "" {
 			company = tok
 		}
+		// ?content=true returns each job's full HTML JD in the same list call, so
+		// we keep the whole job object (content + departments + offices) as Raw.
 		var jr struct {
-			Jobs []struct {
-				Title       string `json:"title"`
-				AbsoluteURL string `json:"absolute_url"`
-				UpdatedAt   string `json:"updated_at"`
-				Location    struct {
-					Name string `json:"name"`
-				} `json:"location"`
-			} `json:"jobs"`
+			Jobs []json.RawMessage `json:"jobs"`
 		}
-		if err := scraperkit.GetJSON("https://boards-api.greenhouse.io/v1/boards/"+tok+"/jobs", nil, &jr); err != nil {
+		if err := scraperkit.GetJSON("https://boards-api.greenhouse.io/v1/boards/"+tok+"/jobs?content=true", nil, &jr); err != nil {
 			fmt.Fprintf(os.Stderr, "[greenhouse] %s: jobs skipped (%v)\n", tok, err)
 			continue
 		}
 		n := 0
-		for _, j := range jr.Jobs {
-			raw, _ := json.Marshal(j)
-			if emit(scraperkit.RawPosting{URL: j.AbsoluteURL, Title: j.Title, Company: company, Location: j.Location.Name, PostedAt: j.UpdatedAt, Raw: raw}) {
+		for _, rawJob := range jr.Jobs {
+			var j struct {
+				Title          string `json:"title"`
+				AbsoluteURL    string `json:"absolute_url"`
+				UpdatedAt      string `json:"updated_at"`
+				FirstPublished string `json:"first_published"`
+				Location       struct {
+					Name string `json:"name"`
+				} `json:"location"`
+			}
+			if json.Unmarshal(rawJob, &j) != nil {
+				continue
+			}
+			posted := j.FirstPublished
+			if posted == "" {
+				posted = j.UpdatedAt
+			}
+			if emit(scraperkit.RawPosting{URL: j.AbsoluteURL, Title: j.Title, Company: company, Location: j.Location.Name, PostedAt: posted, Raw: rawJob}) {
 				n++
 			}
 		}

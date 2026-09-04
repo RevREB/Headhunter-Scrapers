@@ -72,6 +72,9 @@ func fetch(cfg scraperkit.Config, emit func(scraperkit.RawPosting) bool) error {
 				PublishedDate string `json:"publishedDate"`
 				UpdatedAt     string `json:"updatedAt"`
 				IsListed      *bool  `json:"isListed"`
+				Compensation  struct {
+					CompensationTierSummary string `json:"compensationTierSummary"`
+				} `json:"compensation"`
 			}
 			if json.Unmarshal(rawJob, &j) != nil {
 				continue
@@ -81,7 +84,8 @@ func fetch(cfg scraperkit.Config, emit func(scraperkit.RawPosting) bool) error {
 			}
 			if emit(scraperkit.RawPosting{
 				URL: jobURL(board, j.JobURL, j.ID), Title: j.Title, Company: company,
-				Location: j.Location, PostedAt: firstNonEmpty(j.PublishedAt, j.PublishedDate, j.UpdatedAt), Raw: rawJob,
+				Location: j.Location, Comp: j.Compensation.CompensationTierSummary,
+				PostedAt: firstNonEmpty(j.PublishedAt, j.PublishedDate, j.UpdatedAt), Raw: rawJob,
 			}) {
 				n++
 			}

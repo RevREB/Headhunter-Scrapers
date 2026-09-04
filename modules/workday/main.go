@@ -77,6 +77,42 @@ func fetchPage(c wdCompany, offset int) (*wdResponse, error) {
 	return &wr, nil
 }
 
+// wdDetail is the per-job detail response; jobPostingInfo carries the full JD.
+type wdDetail struct {
+	JobPostingInfo struct {
+		JobDescription string `json:"jobDescription"`
+		Location       string `json:"location"`
+		StartDate      string `json:"startDate"`
+	} `json:"jobPostingInfo"`
+}
+
+// fetchDetail GETs one job's detail (the JD body + real posted date). Returns the
+// jobPostingInfo object verbatim as Raw plus the parsed fields.
+func fetchDetail(c wdCompany, externalPath string) (json.RawMessage, wdDetail, error) {
+	url := fmt.Sprintf("https://%s/wday/cxs/%s/%s%s", c.Host, c.Tenant, c.Site, externalPath)
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, wdDetail{}, err
+	}
+	req.Header.Set("Accept", "application/json")
+	resp, err := scraperkit.Client.Do(req)
+	if err != nil {
+		return nil, wdDetail{}, err
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 8<<20))
+	if resp.StatusCode != http.StatusOK {
+		return nil, wdDetail{}, fmt.Errorf("status %d", resp.StatusCode)
+	}
+	var d wdDetail
+	_ = json.Unmarshal(body, &d)
+	var env struct {
+		JobPostingInfo json.RawMessage `json:"jobPostingInfo"`
+	}
+	_ = json.Unmarshal(body, &env)
+	return env.JobPostingInfo, d, nil
+}
+
 func main() { scraperkit.Main("workday", fetch) }
 
 func fetch(cfg scraperkit.Config, emit func(scraperkit.RawPosting) bool) error {
@@ -94,8 +130,24 @@ func fetch(cfg scraperkit.Config, emit func(scraperkit.RawPosting) bool) error {
 			}
 			for _, jp := range wr.JobPostings {
 				total++
-				raw, _ := json.Marshal(jp)
-				if emit(scraperkit.RawPosting{URL: "https://" + c.Host + jp.ExternalPath, Title: jp.Title, Company: c.Display, Location: jp.LocationsText, Raw: raw}) {
+				// Workday's list carries no JD, so fetch each job's detail — but only
+				// for keyword-matched titles, to keep the extra requests bounded.
+				if !scraperkit.MatchAny(strings.ToLower(jp.Title), cfg.Keywords) {
+					continue
+				}
+				p := scraperkit.RawPosting{URL: "https://" + c.Host + jp.ExternalPath, Title: jp.Title, Company: c.Display, Location: jp.LocationsText}
+				if rawDetail, det, err := fetchDetail(c, jp.ExternalPath); err == nil && len(rawDetail) > 0 {
+					p.Raw = rawDetail
+					p.PostedAt = det.JobPostingInfo.StartDate
+					if det.JobPostingInfo.Location != "" {
+						p.Location = det.JobPostingInfo.Location
+					}
+				} else {
+					raw, _ := json.Marshal(jp)
+					p.Raw = raw
+					fmt.Fprintf(os.Stderr, "[workday] %s: detail fetch failed for %q (%v)\n", c.Display, jp.Title, err)
+				}
+				if emit(p) {
 					matched++
 				}
 			}
