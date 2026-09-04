@@ -3,29 +3,113 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      modules:
+        description: "comma-separated module names to build, or 'all'"
+        default: all
 permissions:
   contents: read
   packages: write
+
+# The master workflow is intentionally language-agnostic: it discovers which
+# module folders changed and builds each via the shared ./.github/actions/scraper-image
+# composite, which builds that module's own Dockerfile. It never assumes a
+# toolchain — the language-specific steps live in each module's Dockerfile.
 jobs:
-  test:
+  # scraperkit is a shared *library* module (its own go.mod). Module image builds
+  # test only their own package (go test ./... does not cross module boundaries),
+  # so scraperkit's unit tests would never run in CI unless we run them explicitly.
+  test-scraperkit:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version: '1.25'
-      # No root Go module: each module (and scraperkit) is its own module, so test each in place.
-      - run: |
-          set -e
-          for d in scraperkit modules/*/; do
-            if [ -f "$d/go.mod" ]; then echo "== test $d =="; (cd "$d" && go test ./...); fi
+      - run: cd scraperkit && go test ./...
+
+  discover:
+    runs-on: ubuntu-latest
+    outputs:
+      modules: ${{ steps.pick.outputs.modules }}
+      tag: ${{ steps.pick.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: pick
+        env:
+          EVENT: ${{ github.event_name }}
+          INPUT_MODULES: ${{ github.event.inputs.modules }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+
+          # Immutable build id shared by every image in this run.
+          tag="$(date -u +%Y%m%d%H%M)"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+          # A module = a folder under modules/ that owns a Dockerfile.
+          ALL=()
+          for d in modules/*/; do [ -f "${d}Dockerfile" ] && ALL+=("$(basename "$d")"); done
+
+          REQUESTED=0
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            if [ -z "${INPUT_MODULES:-}" ] || [ "$INPUT_MODULES" = "all" ]; then
+              mapfile -t SEL < <(printf '%s\n' "${ALL[@]}")
+            else
+              REQUESTED=1
+              mapfile -t SEL < <(printf '%s' "$INPUT_MODULES" | tr ',' '\n' | tr -d ' ' | sort -u)
+            fi
+          else
+            base="$BEFORE"
+            if [ -z "$base" ] || [ "$base" = "0000000000000000000000000000000000000000" ] || ! git cat-file -e "${base}^{commit}" 2>/dev/null; then
+              # First push / force-push: the delta is untrustworthy -> build everything (fail safe).
+              mapfile -t SEL < <(printf '%s\n' "${ALL[@]}")
+            else
+              changed="$(git diff --name-only "$base" HEAD)"
+              # Shared code or any CI change -> rebuild all. Here-string (not printf|grep)
+              # so grep -q closing early can't SIGPIPE the writer under pipefail.
+              if grep -qE '^(scraperkit/|\.github/)' <<<"$changed"; then
+                mapfile -t SEL < <(printf '%s\n' "${ALL[@]}")
+              else
+                mapfile -t SEL < <(sed -n 's#^modules/\([^/]*\)/.*#\1#p' <<<"$changed" | sort -u)
+              fi
+            fi
+          fi
+
+          # Keep only names that are real modules.
+          out=()
+          for m in "${SEL[@]:-}"; do
+            [ -z "$m" ] && continue
+            for a in "${ALL[@]}"; do [ "$m" = "$a" ] && out+=("$m"); done
           done
-  images:
-    needs: test
+
+          # A manual run that named modules but matched none is an operator error —
+          # fail loudly instead of a green build-nothing.
+          if [ "$REQUESTED" = "1" ] && [ "${#out[@]}" -eq 0 ]; then
+            echo "::error::no matching modules for input '$INPUT_MODULES' (known: ${ALL[*]})"
+            exit 1
+          fi
+
+          if [ "${#out[@]}" -eq 0 ]; then
+            json='[]'
+          else
+            json="$(printf '%s\n' "${out[@]}" | sort -u | jq -R . | jq -cs .)"
+          fi
+          echo "modules=$json" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag  build=$json"
+
+  build:
+    needs: [discover, test-scraperkit]
+    # success() keeps the gate: a custom if drops the implicit "all needs succeeded"
+    # check, so a failing test-scraperkit would otherwise NOT block the image build.
+    if: ${{ success() && needs.discover.outputs.modules != '[]' && needs.discover.outputs.modules != '' }}
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        module: [greenhouse, lever, ashby, workday, amazon, apple]     # add a module dir name here to publish it
+        module: ${{ fromJson(needs.discover.outputs.modules) }}
     steps:
       - uses: actions/checkout@v4
       - uses: docker/login-action@v3
@@ -33,9 +117,9 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: docker/build-push-action@v6
+      # Each module is built via the shared composite (buildx + GHA layer cache),
+      # which builds that module's own modules/<ats>/Dockerfile.
+      - uses: ./.github/actions/scraper-image
         with:
-          context: .
-          file: modules/${{ matrix.module }}/Dockerfile
-          push: true
-          tags: ghcr.io/revreb/headhunter-scraper-${{ matrix.module }}:build-${{ github.run_number }}
+          module: ${{ matrix.module }}
+          tag: ${{ needs.discover.outputs.tag }}

@@ -1,0 +1,29 @@
+name: scraper-image
+description: Build + push one scraper module from its own Dockerfile, with buildx GHA layer caching.
+inputs:
+  module:
+    description: module directory name under modules/
+    required: true
+  tag:
+    description: immutable image tag (YYYYMMDDHHMM)
+    required: true
+  registry-prefix:
+    description: image name prefix (image = <prefix><module>)
+    default: ghcr.io/revreb/headhunter-scraper-
+runs:
+  using: composite
+  steps:
+    - uses: docker/setup-buildx-action@v3
+    - uses: docker/build-push-action@v6
+      with:
+        # Context is the repo root so a Go module's ../../scraperkit replace resolves;
+        # the module's Dockerfile decides the toolchain (Go, npm, …).
+        context: .
+        file: modules/${{ inputs.module }}/Dockerfile
+        push: true
+        provenance: false          # keep single-manifest images (no untagged attestation children in ghcr)
+        tags: |
+          ${{ inputs.registry-prefix }}${{ inputs.module }}:${{ inputs.tag }}
+          ${{ inputs.registry-prefix }}${{ inputs.module }}:latest
+        cache-from: type=gha,scope=scraper-${{ inputs.module }}
+        cache-to: type=gha,mode=max,scope=scraper-${{ inputs.module }}

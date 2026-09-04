@@ -45,24 +45,52 @@ The full contract — the language-agnostic spec every module must respect, and 
 to write a module in **any language** (not just Go) — is in
 [`scraperkit/README.md`](scraperkit/README.md).
 
+## Building images
+
+Each module's build definition is its own `modules/<ats>/Dockerfile` — the
+language-specific recipe (a Go module runs `go test` + compiles in the build
+stage; another language ships its own toolchain Dockerfile). The top-level
+workflow (`.github/workflows/build.yml`) is **language-agnostic**: on every push
+it discovers module folders (anything with a `Dockerfile`), figures out which ones
+changed — a change under `modules/<ats>/` rebuilds that module; a change to
+`scraperkit/` or `.github/` rebuilds all — and builds each via the shared
+`./.github/actions/scraper-image` composite action, which just runs
+`docker/build-push-action` (buildx layer caching) against that module's Dockerfile.
+Nothing in the master assumes Go.
+
+> GitHub Actions can't run a workflow file that lives inside a module folder, and
+> a step's `uses:` can't take a `${{ matrix.module }}` expression — so the shared
+> composite takes the module name as an input and builds that module's own
+> Dockerfile. The per-module recipe still lives in the folder; only the generic
+> build-and-push-with-cache plumbing is shared.
+
+`scraperkit` is a shared *library* module, not a scraper, so it has no image. Its
+unit tests run in a dedicated `test-scraperkit` CI job (a module's own `go test`
+can't reach into a separate Go module), and that job gates the image builds.
+
+Images are tagged **`YYYYMMDDHHMM`** (an immutable build id, shared across a run)
+**and `latest`**. Core's operator pulls `:latest` with `imagePullPolicy: Always`,
+so a freshly-built scraper rolls out on the next scan cycle only if its digest
+changed. Build one locally with `docker build -f modules/<ats>/Dockerfile .` from
+the repo root.
+
 ## How Core runs them
 
 Core's operator reads a catalog and launches one Kubernetes Job per module
 (scale-to-zero), on a schedule and on-demand (`POST /api/cycle`). The operative
-catalog — image tags + per-module company lists — is the RevNet ConfigMap
+catalog — images (`:latest`) + per-module company lists — is the RevNet ConfigMap
 `apps/headhunter/scan-catalog.yaml`; `catalog/catalog.yaml` here documents the
 library. Core never scrapes itself.
 
 ## Adding a module
 
-Add `modules/<ats>/` — for a Go module that's a `go.mod` (pull in `scraperkit`
-via a local `replace`, see [`scraperkit/README.md`](scraperkit/README.md)), a
-`main.go` with a `fetch` func, a `Dockerfile`, and a `_test.go` for any pure
-helpers. A module in another language just needs its own build files + a
-`Dockerfile` that honors the contract. Then add `<ats>` to the `build.yml` matrix
-and to the RevNet scan catalog with its company list. Each module is its own
-module, so run tests inside its directory (`cd modules/<ats> && go test ./...`);
-CI does this for every module dir.
+Add `modules/<ats>/` with a `Dockerfile` that honors the contract — for a Go
+module also a `go.mod` (pull in `scraperkit` via a local `replace`, see
+[`scraperkit/README.md`](scraperkit/README.md)), a `main.go` with a `fetch` func,
+and a `_test.go` for any pure helpers. A module in another language just needs its
+own toolchain `Dockerfile`. The workflow auto-discovers the folder by its
+`Dockerfile` — no matrix to edit — so you only add the module to the RevNet scan
+catalog with its company list.
 
 ## License
 
