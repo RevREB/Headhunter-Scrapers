@@ -41,6 +41,10 @@ POSTs the batch, and sets the exit code. A module reads its own companies var
 (`GH_COMPANIES`, `ASHBY_COMPANIES`, `WD_COMPANIES` as `host|tenant|site|Display`
 tuples, `AMAZON_QUERIES`, …) and calls `emit` per posting.
 
+The full contract — the language-agnostic spec every module must respect, and how
+to write a module in **any language** (not just Go) — is in
+[`scraperkit/README.md`](scraperkit/README.md).
+
 ## How Core runs them
 
 Core's operator reads a catalog and launches one Kubernetes Job per module
