@@ -33,3 +33,13 @@ scrapers:
     tier: 2
     image: ghcr.io/revreb/headhunter-scraper-workday
     contractVersion: "1.0.0"
+
+  - ats: amazon
+    tier: 2                     # custom-company scraper (not a standard ATS)
+    image: ghcr.io/revreb/headhunter-scraper-amazon
+    contractVersion: "1.0.0"
+
+  - ats: apple
+    tier: 2                     # custom-company scraper (not a standard ATS)
+    image: ghcr.io/revreb/headhunter-scraper-apple
+    contractVersion: "1.0.0"
