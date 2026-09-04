@@ -2,7 +2,7 @@
 FROM golang:1.25-bookworm AS build
 WORKDIR /src
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/scraper ./tier2/lever
+RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/scraper ./modules/apple
 FROM gcr.io/distroless/static:nonroot
 COPY --from=build /out/scraper /scraper
 USER 65532:65532

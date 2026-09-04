@@ -5,9 +5,8 @@
 # (apps/headhunter/scan-catalog.yaml) — it carries image tags + per-scraper
 # company lists and is curated there.
 #
-# Every current scraper is Tier-2: a container image run as a one-shot Kubernetes
-# Job by Core's operator. Tier-1 (declarative manifests interpreted by a shared
-# runner) is a planned addition — see tier1/greenhouse.yaml for the target format.
+# Every module is a container image run as a one-shot Kubernetes Job by Core's
+# operator. Each lives in modules/<ats>/ and shares the scraperkit package.
 scrapers:
   - ats: greenhouse
     image: ghcr.io/revreb/headhunter-scraper-greenhouse
