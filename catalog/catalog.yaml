@@ -18,3 +18,18 @@ scrapers:
     tier: 2                     # code image — one-shot Job, POSTs to Core ingest
     image: ghcr.io/revreb/headhunter-scraper-greenhouse
     contractVersion: "1.0.0"
+
+  - ats: lever
+    tier: 2
+    image: ghcr.io/revreb/headhunter-scraper-lever
+    contractVersion: "1.0.0"
+
+  - ats: ashby
+    tier: 2
+    image: ghcr.io/revreb/headhunter-scraper-ashby
+    contractVersion: "1.0.0"
+
+  - ats: workday
+    tier: 2
+    image: ghcr.io/revreb/headhunter-scraper-workday
+    contractVersion: "1.0.0"
