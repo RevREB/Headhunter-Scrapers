@@ -1,0 +1,19 @@
+# Tier-1 declarative scraper manifest — interpreted by Headhunter-Core's engine.
+# No code: adding an ATS like this is just committing a file.
+ats: greenhouse
+contractVersion: "1.0.0"
+kind: http-json
+request:
+  # {company} is substituted from PortalConfig.query.company
+  url: "https://boards-api.greenhouse.io/v1/boards/{company}/jobs?content=true"
+  method: GET
+pagination:
+  type: none
+list: "jobs"                    # JSON path to the array of postings
+map:                            # RawPosting field <- JSON path within each item
+  url: "absolute_url"
+  title: "title"
+  company: "={company}"         # literal from query
+  location: "location.name"
+  postedAt: "updated_at"
+  raw: "."                      # keep the whole item as the ATS-native blob

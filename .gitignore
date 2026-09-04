@@ -1,0 +1,9 @@
+/bin/
+/out/
+*.test
+*.out
+.env
+.env.*
+
+# stray build binaries
+/scraper

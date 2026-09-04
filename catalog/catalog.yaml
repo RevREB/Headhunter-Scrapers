@@ -1,0 +1,15 @@
+# The scraper catalog — git IS the registry.
+#
+# Headhunter-Core reads this to know which ATS scrapers exist. Adding or updating
+# an ATS is a commit here (plus, for Tier-2, an image push to ghcr). Existence
+# lives in git; each scraper announces its capabilities to Core at spin-up.
+scrapers:
+  - ats: greenhouse
+    tier: 1                     # declarative — interpreted by Core's engine
+    manifest: tier1/greenhouse.yaml
+    contractVersion: "1.0.0"
+
+  - ats: example
+    tier: 2                     # code image — one-shot Job
+    image: ghcr.io/revreb/headhunter-scraper-example
+    contractVersion: "1.0.0"
