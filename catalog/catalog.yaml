@@ -16,6 +16,8 @@ scrapers:
     image: ghcr.io/revreb/headhunter-scraper-ashby
   - ats: workday
     image: ghcr.io/revreb/headhunter-scraper-workday
+  - ats: builtin           # aggregator (builtin.com); schema.org JSON-LD, no per-company config
+    image: ghcr.io/revreb/headhunter-scraper-builtin
   - ats: amazon            # custom-company (amazon.jobs), not a standard ATS
     image: ghcr.io/revreb/headhunter-scraper-amazon
   - ats: apple             # custom-company; DEFERRED — jobs.apple.com is CSRF/bot-gated (HTTP 436)
