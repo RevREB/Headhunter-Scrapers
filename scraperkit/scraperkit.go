@@ -15,13 +15,14 @@ import (
 	"time"
 )
 
-const contractVersion = "1.0.0"
+const contractVersion = "1.1.0"
 
 // RawPosting is Headhunter's canonical ingest shape, identical across modules.
 type RawPosting struct {
 	URL      string          `json:"url"`
 	Title    string          `json:"title"`
 	Company  string          `json:"company"`
+	ATS      string          `json:"ats,omitempty"` // source board (v1.1); stamped centrally by Main
 	Location string          `json:"location,omitempty"`
 	Comp     string          `json:"comp,omitempty"`
 	PostedAt string          `json:"postedAt,omitempty"`
@@ -108,6 +109,7 @@ func Main(ats string, fetch func(cfg Config, emit func(RawPosting) bool) error) 
 			return false
 		}
 		seen[p.URL] = true
+		p.ATS = ats // v1.1: stamp the source board so Core attributes sightings per ATS
 		all = append(all, p)
 		return true
 	}
